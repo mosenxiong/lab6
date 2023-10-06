@@ -1,28 +1,108 @@
 ---
-title: ""
-author: ""
+title: "lab6"
+author: "senxiong mo"
 format:
   html:
     embed-resources: true
 ---
 
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
 ```{r}
-1 + 1
+library(R.utils)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidytext)
+library(forcats)
+library(tidyr)
 ```
 
-You can add options to executable code like this
-
 ```{r}
-#| echo: false
-2 * 2
+if (!file.exists("mtsamples.csv")){
+  download.file("https://raw.githubusercontent.com/USCbiostats/data-science-data/master/00_mtsamples/mtsamples.csv", "mtsamples.csv", method="libcurl", timeout = 60)}
+
+mt_samples<- read.csv("mtsamples.csv")
+
+summary(mt_samples)
+str(mt_samples)
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+# Q1.
+```{r}
+diff_ca<- mt_samples %>%
+  count(medical_specialty,sort = TRUE)
+diff_ca
+```
+There are 40 medical specialties.
+
+# Q2
+```{r}
+mt_samples %>%
+  unnest_tokens(token, transcription) %>%
+  count(token) %>%
+  top_n(20,n) %>%
+  ggplot(aes(n,fct_reorder(token,n))) +geom_col()
+```
+I think the top 20 words don't make sense.
+
+# Q3
+```{r}
+mt_samples%>%
+  unnest_tokens(word, transcription) %>%
+  anti_join(stop_words, by = c("word")) %>%
+  count(word, sort = TRUE) %>%
+  filter(!grepl(pattern = "^[0-9]+$", x = word)) %>%
+  top_n(20, n) %>%
+  ggplot(aes(n, fct_reorder(word, n))) +geom_col()
+```
+I think after removing the stop words, it looks better.
+
+# Q4
+```{r}
+ mt_samples%>%
+  unnest_ngrams(bigram, transcription, n=2) %>%
+  count(bigram, sort = TRUE) %>%
+  top_n(20, n) %>%
+  ggplot(aes(n, fct_reorder(bigram, n))) +geom_col()
+
+mt_samples %>%
+  unnest_ngrams(trigram, transcription, n=3) %>%
+  count(trigram, sort = TRUE) %>%
+  top_n(20, n) %>%
+  ggplot(aes(n, fct_reorder(trigram, n))) +geom_col()
+```
+I think it looks better, including with more words.
+
+# Q5
+```{r}
+mt_samples %>%
+  unnest_tokens(ngram, transcription, token = "ngrams", n = 2) %>%
+  separate(ngram, into = c("word1", "word2"), sep = " ") %>%
+  select(word1, word2) %>%
+  filter(word1 == "evidence") %>%
+  count(word2, sort = TRUE)
+
+mt_samples %>%
+  unnest_tokens(ngram, transcription, token = "ngrams", n = 2) %>%
+  separate(ngram, into = c("word1", "word2"), sep = " ") %>%
+  select(word1, word2) %>%
+  filter(word2 == "evidence") %>%
+  count(word1, sort = TRUE)
+```
+
+# Q6
+```{r}
+mt_samples %>%
+  group_by(medical_specialty) %>%
+  unnest_tokens(token, transcription) %>%
+  anti_join(stop_words, by = c("token"="word")) %>%
+  filter(!grepl("[0-9]", token)) %>%
+  count(token) %>%
+  top_n(5,n)
+```
+
+
+
+
+
+
+
